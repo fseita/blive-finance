@@ -6,19 +6,33 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import { isMockMode } from '../../lib/app-mode'
 import { createPedidoPagamento, listUnidades } from '../../lib/data'
+import { encodePaymentDestination } from '../../lib/payment-destination'
 import type { Unidade } from '../../types/database'
 
-const schema = z.object({
+const baseSchema = {
   unidade_id: z.string().min(1, 'Escolhe a unidade'),
   nome_submissor: z.string().min(2, 'Indica o teu nome'),
-  iban: z.string().min(15, 'Indica um IBAN válido'),
   valor: z.coerce.number().positive('O valor tem de ser superior a zero'),
   data_limite: z.string().min(1, 'Escolhe a data limite'),
   descricao: z.string().min(5, 'Descreve a despesa'),
   ficheiro: z
     .any()
     .refine((files) => files?.length === 1, 'Anexa um PDF ou imagem'),
-})
+}
+
+const schema = z.discriminatedUnion('metodo_pagamento', [
+  z.object({
+    ...baseSchema,
+    metodo_pagamento: z.literal('transferencia'),
+    iban: z.string().min(15, 'Indica um IBAN válido'),
+  }),
+  z.object({
+    ...baseSchema,
+    metodo_pagamento: z.literal('multibanco'),
+    entidade: z.string().min(3, 'Indica a entidade'),
+    referencia: z.string().min(5, 'Indica a referência'),
+  }),
+])
 
 type FormInput = z.input<typeof schema>
 type FormValues = z.output<typeof schema>
@@ -35,6 +49,9 @@ export function PublicPaymentForm() {
     formState: { errors },
   } = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      metodo_pagamento: 'transferencia',
+    },
   })
 
   useEffect(() => {
@@ -42,6 +59,7 @@ export function PublicPaymentForm() {
   }, [])
 
   const selectedFile = watch('ficheiro')?.[0] as File | undefined
+  const paymentMethod = watch('metodo_pagamento')
 
   const onSubmit = handleSubmit(async (values) => {
     const file = values.ficheiro?.[0] as File | undefined
@@ -57,7 +75,9 @@ export function PublicPaymentForm() {
       await createPedidoPagamento({
         unidade_id: values.unidade_id,
         nome_submissor: values.nome_submissor,
-        iban: values.iban,
+        iban: values.metodo_pagamento === 'multibanco'
+          ? encodePaymentDestination({ method: 'multibanco', entidade: values.entidade, referencia: values.referencia })
+          : encodePaymentDestination({ method: 'transferencia', iban: values.iban }),
         valor: values.valor,
         data_limite: values.data_limite,
         descricao: values.descricao,
@@ -65,7 +85,7 @@ export function PublicPaymentForm() {
       }, file)
 
       toast.success('Pedido submetido com sucesso.')
-      reset()
+      reset({ metodo_pagamento: 'transferencia' })
     } catch {
       toast.error('Não foi possível submeter o pedido.')
     } finally {
@@ -91,8 +111,11 @@ export function PublicPaymentForm() {
 
       <div className="grid gap-5 lg:grid-cols-12">
         <div className="lg:col-span-6">
-          <Field label="IBAN" required error={errors.iban?.message}>
-            <input {...register('iban')} className="input-base" placeholder="PT50..." required aria-required="true" />
+          <Field label="Método de pagamento" required error={errors.metodo_pagamento?.message}>
+            <select {...register('metodo_pagamento')} className="input-base" required aria-required="true">
+              <option value="transferencia">Transferência bancária</option>
+              <option value="multibanco">Referência Multibanco</option>
+            </select>
           </Field>
         </div>
         <div className="lg:col-span-3">
@@ -106,6 +129,21 @@ export function PublicPaymentForm() {
           </Field>
         </div>
       </div>
+
+      {paymentMethod === 'multibanco' ? (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Field label="Entidade" required error={'entidade' in errors ? errors.entidade?.message : undefined}>
+            <input {...register('entidade')} className="input-base" placeholder="Ex: 12345" required aria-required="true" />
+          </Field>
+          <Field label="Referência" required error={'referencia' in errors ? errors.referencia?.message : undefined}>
+            <input {...register('referencia')} className="input-base" placeholder="Ex: 123 456 789" required aria-required="true" />
+          </Field>
+        </div>
+      ) : (
+        <Field label="IBAN" required error={'iban' in errors ? errors.iban?.message : undefined}>
+          <input {...register('iban')} className="input-base" placeholder="PT50..." required aria-required="true" />
+        </Field>
+      )}
 
       <Field label="Descrição" required error={errors.descricao?.message}>
         <textarea {...register('descricao')} className="input-base min-h-32" placeholder="Explica a despesa e o contexto." required aria-required="true" />

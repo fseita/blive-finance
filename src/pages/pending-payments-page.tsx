@@ -8,6 +8,7 @@ import { StatusBadge } from '../components/common/status-badge'
 import { ProcessPaymentModal } from '../components/payments/process-payment-modal'
 import { listPendingPedidos } from '../lib/data'
 import { formatCurrency, formatDate } from '../lib/format'
+import { parsePaymentDestination } from '../lib/payment-destination'
 import type { PedidoPagamento } from '../types/database'
 
 export function PendingPaymentsPage() {
@@ -60,7 +61,10 @@ export function PendingPaymentsPage() {
         {pedidos.length === 0 ? (
           <EmptyState icon={AlertCircle} title="Sem pedidos pendentes" text="Quando entrarem novas submissões, aparecem aqui para validação e pagamento." />
         ) : (
-          pedidos.map((pedido) => (
+          pedidos.map((pedido) => {
+            const paymentDestination = parsePaymentDestination(pedido.iban)
+
+            return (
             <SectionCard key={pedido.id} className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
               <div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -71,7 +75,18 @@ export function PendingPaymentsPage() {
                   <p><span className="text-slate-500">Unidade:</span> {pedido.unidade?.nome}</p>
                   <p><span className="text-slate-500">Valor:</span> {formatCurrency(Number(pedido.valor))}</p>
                   <p><span className="text-slate-500">Data limite:</span> {formatDate(pedido.data_limite)}</p>
-                  <p className="break-all"><span className="text-slate-500">IBAN:</span> {pedido.iban}</p>
+                  {paymentDestination.method === 'multibanco' ? (
+                    <>
+                      <p><span className="text-slate-500">Método:</span> Referência Multibanco</p>
+                      <p><span className="text-slate-500">Entidade:</span> {paymentDestination.entidade}</p>
+                      <p className="break-all"><span className="text-slate-500">Referência:</span> {paymentDestination.referencia}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p><span className="text-slate-500">Método:</span> Transferência bancária</p>
+                      <p className="break-all md:col-span-2"><span className="text-slate-500">IBAN:</span> {paymentDestination.iban}</p>
+                    </>
+                  )}
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-300">{pedido.descricao}</p>
                 <a href={pedido.ficheiro_url} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm text-[#9FB941] hover:text-[#b2cc54]">
@@ -87,7 +102,7 @@ export function PendingPaymentsPage() {
                 Processar pagamento
               </button>
             </SectionCard>
-          ))
+          )})
         )}
         </div>
       </div>

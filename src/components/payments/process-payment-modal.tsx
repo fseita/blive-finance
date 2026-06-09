@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { processPedidoPagamento } from '../../lib/data'
 import { formatCurrency } from '../../lib/format'
+import { parsePaymentDestination } from '../../lib/payment-destination'
 import type { PedidoPagamento } from '../../types/database'
 
 const expenseCategories = ['Ordenados', 'Notas de crédito', 'Fornecedores', 'Renda', 'Limpeza', 'Consumíveis']
@@ -17,6 +18,8 @@ export function ProcessPaymentModal({ pedido, onClose, onProcessed }: ProcessPay
   const [submitting, setSubmitting] = useState(false)
 
   if (!pedido) return null
+
+  const paymentDestination = parsePaymentDestination(pedido.iban)
 
   const handleConfirm = async () => {
     setSubmitting(true)
@@ -53,6 +56,18 @@ export function ProcessPaymentModal({ pedido, onClose, onProcessed }: ProcessPay
           <div>
             <p className="text-slate-400">Valor</p>
             <p className="mt-1 text-base text-white">{formatCurrency(Number(pedido.valor))}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Método</p>
+            <p className="mt-1 text-base text-white">{paymentDestination.method === 'multibanco' ? 'Referência Multibanco' : 'Transferência bancária'}</p>
+          </div>
+          <div>
+            <p className="text-slate-400">Destino</p>
+            <p className="mt-1 text-base text-white">
+              {paymentDestination.method === 'multibanco'
+                ? `Entidade ${paymentDestination.entidade} · Ref. ${paymentDestination.referencia}`
+                : paymentDestination.iban}
+            </p>
           </div>
           <label className="block md:col-span-2">
             <span className="mb-2 block text-slate-400">Categoria da despesa</span>

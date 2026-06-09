@@ -39,7 +39,7 @@ export const mockPedidosPagamento: PedidoPagamento[] = [
     criado_em: '2026-06-07T15:40:00Z',
     unidade_id: 'u-padel',
     nome_submissor: 'Ana Martins',
-    iban: 'PT50001800031234567894467',
+    iban: 'MB|12345|123 456 789',
     valor: 137.9,
     data_limite: '2026-06-14',
     descricao: 'Compra de consumíveis e produtos de limpeza para recepção e balneários.',
