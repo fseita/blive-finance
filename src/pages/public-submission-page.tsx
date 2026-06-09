@@ -1,4 +1,5 @@
-import { CheckCircle2, FileText, Landmark, ShieldCheck } from 'lucide-react'
+import { ArrowRight, CheckCircle2, FileText, Landmark, ShieldCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { PublicPaymentForm } from '../components/forms/public-payment-form'
 import { SectionCard } from '../components/common/section-card'
 
@@ -8,7 +9,16 @@ export function PublicSubmissionPage() {
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr] xl:items-stretch">
         <SectionCard className="overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(159,185,65,0.18),transparent_35%),rgba(2,6,23,0.75)] xl:min-h-full">
           <div className="max-w-2xl">
-            <img src="/blive-logo.png" alt="BLIVE" className="h-10 w-auto object-contain sm:h-12" />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <img src="/blive-logo.png" alt="BLIVE" className="h-10 w-auto object-contain sm:h-12" />
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 self-start rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-[#9FB941]/40 hover:bg-white/10"
+              >
+                Login backoffice
+                <ArrowRight size={16} />
+              </Link>
+            </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-5xl">Submissão de despesas do Grupo BLIVE</h1>
             <p className="mt-3 text-base text-slate-300 sm:text-lg">
               Formulário simples, seguro e directo para enviar pedidos de pagamento com comprovativo anexado.
