@@ -31,6 +31,14 @@ export default async function handler(event) {
 
     if (configError) throw configError
 
+    const { data: pedido, error: pedidoError } = await supabaseAdmin
+      .from('pedidos_pagamento')
+      .select('id, ficheiro_url')
+      .eq('id', payload.pedidoId)
+      .maybeSingle()
+
+    if (pedidoError) throw pedidoError
+
     const unidade = Array.isArray(config?.unidade) ? config.unidade[0] : config?.unidade
     const unidadeNome = payload.unidadeNome || unidade?.nome || 'Unidade BLIVE'
 
@@ -40,12 +48,18 @@ export default async function handler(event) {
       return json(422, { error: `Não existe email configurado para ${payload.eventType === 'new-payment-request' ? 'novo pedido' : 'pedido pago'} em ${unidadeNome}.` })
     }
 
-    const message = buildMessage(payload, unidadeNome)
+    const message = buildMessage(payload, unidadeNome, config?.novo_pedido_email)
+    const attachments = payload.eventType === 'new-payment-request' && pedido?.ficheiro_url
+      ? [await buildAttachmentFromUrl(pedido.ficheiro_url)]
+      : undefined
+
     const delivery = await sendAgentmailEmail({
       to: recipient,
       subject: message.subject,
       text: message.text,
       html: message.html,
+      attachments,
+      replyTo: payload.eventType === 'payment-paid' && config?.novo_pedido_email ? [config.novo_pedido_email] : undefined,
     })
 
     await supabaseAdmin.from('notificacoes_mock').insert({
@@ -66,7 +80,7 @@ export default async function handler(event) {
   }
 }
 
-function buildMessage(payload, unidadeNome) {
+function buildMessage(payload, unidadeNome, novoPedidoEmail) {
   const valor = formatCurrency(payload.valor)
 
   if (payload.eventType === 'payment-paid') {
@@ -78,7 +92,7 @@ function buildMessage(payload, unidadeNome) {
       `Valor: ${valor}`,
       payload.categoria ? `Categoria: ${payload.categoria}` : null,
       '',
-      'Se precisares de algum detalhe adicional, responde a este email.',
+      `Se precisares de algum detalhe adicional, responda para ${novoPedidoEmail || 'o email configurado para receber o pedido'}.`,
     ].filter(Boolean).join('\n')
 
     const html = `
@@ -88,7 +102,7 @@ function buildMessage(payload, unidadeNome) {
         <li><strong>Valor:</strong> ${escapeHtml(valor)}</li>
         ${payload.categoria ? `<li><strong>Categoria:</strong> ${escapeHtml(payload.categoria)}</li>` : ''}
       </ul>
-      <p>Se precisares de algum detalhe adicional, responde a este email.</p>
+      <p>Se precisares de algum detalhe adicional, responda para <strong>${escapeHtml(novoPedidoEmail || 'o email configurado para receber o pedido')}</strong>.</p>
     `
 
     return { subject, text, html }
@@ -115,6 +129,24 @@ function buildMessage(payload, unidadeNome) {
   `
 
   return { subject, text, html }
+}
+
+async function buildAttachmentFromUrl(url) {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error('Não foi possível obter o comprovativo para anexar no email.')
+  }
+
+  const bytes = Buffer.from(await response.arrayBuffer())
+  const normalizedUrl = new URL(url)
+  const filename = normalizedUrl.pathname.split('/').pop() || 'comprovativo'
+  const contentType = response.headers.get('content-type') || 'application/octet-stream'
+
+  return {
+    filename,
+    content: bytes.toString('base64'),
+    content_type: contentType,
+  }
 }
 
 function formatCurrency(value) {
