@@ -1,6 +1,6 @@
 import { readAgentmailApiKey, readAgentmailInbox } from './env.mjs'
 
-export async function sendAgentmailEmail({ to, subject, text, html, attachments, replyTo }) {
+export async function sendAgentmailEmail({ to, subject, text, html, attachments, replyTo, fromName }) {
   const apiKey = readAgentmailApiKey()
   const inbox = readAgentmailInbox()
 
@@ -21,6 +21,7 @@ export async function sendAgentmailEmail({ to, subject, text, html, attachments,
       html,
       attachments,
       reply_to: replyTo,
+      headers: fromName ? { From: `${fromName} <${inbox}>` } : undefined,
     }),
   })
 

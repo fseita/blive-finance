@@ -48,6 +48,10 @@ export default async function handler(event) {
       return json(422, { error: `Não existe email configurado para ${payload.eventType === 'new-payment-request' ? 'novo pedido' : 'pedido pago'} em ${unidadeNome}.` })
     }
 
+    if (payload.eventType === 'payment-paid' && !config?.novo_pedido_email) {
+      return json(422, { error: `Falta configurar o email de novo pedido em ${unidadeNome} para compor a resposta final da confirmação.` })
+    }
+
     const message = buildMessage(payload, unidadeNome, config?.novo_pedido_email)
     const attachments = payload.eventType === 'new-payment-request' && pedido?.ficheiro_url
       ? [await buildAttachmentFromUrl(pedido.ficheiro_url)]
@@ -60,6 +64,7 @@ export default async function handler(event) {
       html: message.html,
       attachments,
       replyTo: payload.eventType === 'payment-paid' && config?.novo_pedido_email ? [config.novo_pedido_email] : undefined,
+      fromName: 'Blive Finance',
     })
 
     await supabaseAdmin.from('notificacoes_mock').insert({
@@ -92,7 +97,7 @@ function buildMessage(payload, unidadeNome, novoPedidoEmail) {
       `Valor: ${valor}`,
       payload.categoria ? `Categoria: ${payload.categoria}` : null,
       '',
-      `Se precisares de algum detalhe adicional, responda para ${novoPedidoEmail || 'o email configurado para receber o pedido'}.`,
+      `Se precisares de algum detalhe adicional, responda para ${novoPedidoEmail}.`,
     ].filter(Boolean).join('\n')
 
     const html = `
@@ -102,7 +107,7 @@ function buildMessage(payload, unidadeNome, novoPedidoEmail) {
         <li><strong>Valor:</strong> ${escapeHtml(valor)}</li>
         ${payload.categoria ? `<li><strong>Categoria:</strong> ${escapeHtml(payload.categoria)}</li>` : ''}
       </ul>
-      <p>Se precisares de algum detalhe adicional, responda para <strong>${escapeHtml(novoPedidoEmail || 'o email configurado para receber o pedido')}</strong>.</p>
+      <p>Se precisares de algum detalhe adicional, responda para <strong>${escapeHtml(novoPedidoEmail)}</strong>.</p>
     `
 
     return { subject, text, html }
