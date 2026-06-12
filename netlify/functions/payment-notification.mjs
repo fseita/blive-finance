@@ -2,16 +2,18 @@ import { sendAgentmailEmail } from './_lib/agentmail.mjs'
 import { createSupabaseAdminClient, createSupabaseAuthClient } from './_lib/supabase.mjs'
 
 export default async function handler(event) {
-  if (event.httpMethod !== 'POST') {
+  const method = event?.httpMethod ?? event?.method
+
+  if (method !== 'POST') {
     return json(405, { error: 'Method not allowed' })
   }
 
   try {
-    const payload = JSON.parse(event.body || '{}')
+    const payload = await readPayload(event)
     const supabaseAdmin = createSupabaseAdminClient()
 
     if (payload.eventType === 'payment-paid') {
-      const authHeader = event.headers.authorization || event.headers.Authorization
+      const authHeader = event.headers?.authorization || event.headers?.Authorization
       const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 
       if (!token) return json(401, { error: 'Sessão inválida para envio da confirmação.' })
@@ -126,6 +128,22 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;')
+}
+
+async function readPayload(event) {
+  if (typeof event?.json === 'function') {
+    return await event.json()
+  }
+
+  if (typeof event?.body === 'string') {
+    return JSON.parse(event.body || '{}')
+  }
+
+  if (event?.body && typeof event.body === 'object') {
+    return event.body
+  }
+
+  return {}
 }
 
 function json(statusCode, body) {
