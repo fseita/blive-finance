@@ -72,7 +72,7 @@ export function PublicPaymentForm() {
     setSubmitting(true)
 
     try {
-      await createPedidoPagamento({
+      const result = await createPedidoPagamento({
         unidade_id: values.unidade_id,
         nome_submissor: values.nome_submissor,
         iban: values.metodo_pagamento === 'multibanco'
@@ -85,6 +85,7 @@ export function PublicPaymentForm() {
       }, file)
 
       toast.success('Pedido submetido com sucesso.')
+      if (!result.ok && result.warning) toast.warning(result.warning)
       reset({ metodo_pagamento: 'transferencia' })
     } catch {
       toast.error('Não foi possível submeter o pedido.')

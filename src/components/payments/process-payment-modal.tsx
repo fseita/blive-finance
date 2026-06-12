@@ -25,8 +25,9 @@ export function ProcessPaymentModal({ pedido, onClose, onProcessed }: ProcessPay
     setSubmitting(true)
 
     try {
-      await processPedidoPagamento(pedido.id, categoria)
+      const result = await processPedidoPagamento(pedido, categoria)
       toast.success('Pagamento processado com sucesso.')
+      if (!result.ok && result.warning) toast.warning(result.warning)
       await onProcessed()
       onClose()
     } catch {

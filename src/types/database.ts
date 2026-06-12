@@ -7,6 +7,14 @@ export interface Unidade {
   conta_bancaria_nome: string | null
 }
 
+export interface UnidadeEmailConfig {
+  unidade_id: string
+  novo_pedido_email: string | null
+  pedido_pago_email: string | null
+  updated_at?: string
+  unidade?: Unidade
+}
+
 export interface PedidoPagamento {
   id: string
   criado_em: string

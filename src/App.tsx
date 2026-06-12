@@ -6,6 +6,7 @@ import { LoginPage } from './pages/login-page'
 import { ManualRevenuePage } from './pages/manual-revenue-page'
 import { PendingPaymentsPage } from './pages/pending-payments-page'
 import { PublicSubmissionPage } from './pages/public-submission-page'
+import { SettingsPage } from './pages/settings-page'
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
         <Route path="pagamentos" element={<PendingPaymentsPage />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="receitas" element={<ManualRevenuePage />} />
+        <Route path="configuracoes" element={<SettingsPage />} />
       </Route>
     </Routes>
   )

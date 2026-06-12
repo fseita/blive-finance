@@ -1,4 +1,4 @@
-import type { PedidoPagamento, Transacao, Unidade } from '../types/database'
+import type { PedidoPagamento, Transacao, Unidade, UnidadeEmailConfig } from '../types/database'
 import { mockPedidosPagamento, mockTransacoes, mockUnidades } from './mock-data'
 
 const KEYS = {
@@ -6,6 +6,7 @@ const KEYS = {
   pedidos: 'blive-finance:mock:pedidos',
   transacoes: 'blive-finance:mock:transacoes',
   auth: 'blive-finance:mock:auth',
+  unidadeEmailConfig: 'blive-finance:mock:unidade-email-config',
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -26,6 +27,16 @@ export function seedMockData() {
   if (!localStorage.getItem(KEYS.unidades)) writeJson(KEYS.unidades, mockUnidades)
   if (!localStorage.getItem(KEYS.pedidos)) writeJson(KEYS.pedidos, mockPedidosPagamento)
   if (!localStorage.getItem(KEYS.transacoes)) writeJson(KEYS.transacoes, mockTransacoes)
+  if (!localStorage.getItem(KEYS.unidadeEmailConfig)) {
+    writeJson(
+      KEYS.unidadeEmailConfig,
+      mockUnidades.map((unidade) => ({
+        unidade_id: unidade.id,
+        novo_pedido_email: '',
+        pedido_pago_email: '',
+      })),
+    )
+  }
 }
 
 export function getMockUnidades(): Unidade[] {
@@ -47,11 +58,26 @@ export function getMockTransacoes(): Transacao[] {
   return readJson(KEYS.transacoes, mockTransacoes)
 }
 
-export function submitMockPedido(input: Omit<PedidoPagamento, 'id' | 'criado_em' | 'estado' | 'unidade'>) {
+export function getMockUnidadeEmailConfig(): UnidadeEmailConfig[] {
+  seedMockData()
+  const unidades = getMockUnidades()
+  return readJson<Omit<UnidadeEmailConfig, 'unidade'>[]>(KEYS.unidadeEmailConfig, []).map((item) => ({
+    ...item,
+    unidade: unidades.find((unit) => unit.id === item.unidade_id),
+  }))
+}
+
+export function saveMockUnidadeEmailConfig(configs: UnidadeEmailConfig[]) {
+  writeJson(
+    KEYS.unidadeEmailConfig,
+    configs.map(({ unidade, ...item }) => item),
+  )
+}
+
+export function submitMockPedido(input: Omit<PedidoPagamento, 'criado_em' | 'estado' | 'unidade'>) {
   const pedidos = getMockPedidos().map(({ unidade, ...pedido }) => pedido)
   const next: PedidoPagamento = {
     ...input,
-    id: crypto.randomUUID(),
     criado_em: new Date().toISOString(),
     estado: 'Pendente',
   }

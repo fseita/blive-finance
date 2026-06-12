@@ -1,4 +1,4 @@
-import { BarChart3, CreditCard, DatabaseZap, LogOut, Wallet } from 'lucide-react'
+import { BarChart3, CreditCard, DatabaseZap, LogOut, Mail, Wallet } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../hooks/use-auth'
 
@@ -6,6 +6,7 @@ const links = [
   { to: '/admin/pagamentos', label: 'Pagamentos', mobileLabel: 'Pagamentos', icon: CreditCard },
   { to: '/admin/dashboard', label: 'Dashboard', mobileLabel: 'Dashboard', icon: BarChart3 },
   { to: '/admin/receitas', label: 'Receitas', mobileLabel: 'Receitas', icon: Wallet },
+  { to: '/admin/configuracoes', label: 'Configuração', mobileLabel: 'Config', icon: Mail },
 ]
 
 export function Sidebar() {
@@ -36,7 +37,7 @@ export function Sidebar() {
           <DatabaseZap size={16} />
           <span>Centro de gestão</span>
         </div>
-        <p className="mt-2 hidden text-xs text-slate-400 sm:block">Acompanha pedidos, receitas e movimentos financeiros num único lugar.</p>
+        <p className="mt-2 hidden text-xs text-slate-400 sm:block">Acompanha pedidos, receitas, emails automáticos e movimentos financeiros num único lugar.</p>
       </div>
 
       <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 xl:mt-8 xl:block xl:space-y-2 xl:overflow-visible xl:pb-0">
