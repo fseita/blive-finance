@@ -13,7 +13,7 @@ export default async function handler(event) {
     const supabaseAdmin = createSupabaseAdminClient()
 
     if (payload.eventType === 'payment-paid') {
-      const authHeader = event.headers?.authorization || event.headers?.Authorization
+      const authHeader = readAuthorizationHeader(event)
       const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
 
       if (!token) return json(401, { error: 'Sessão inválida para envio da confirmação.' })
@@ -181,6 +181,14 @@ async function readPayload(event) {
   }
 
   return {}
+}
+
+function readAuthorizationHeader(event) {
+  if (typeof event?.headers?.get === 'function') {
+    return event.headers.get('authorization') || event.headers.get('Authorization')
+  }
+
+  return event?.headers?.authorization || event?.headers?.Authorization || null
 }
 
 function json(statusCode, body) {
