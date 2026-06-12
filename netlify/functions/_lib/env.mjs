@@ -18,7 +18,7 @@ export function readSupabaseAnonKey() {
 }
 
 export function readAgentmailInbox() {
-  return readEnv('AGENTMAIL_INBOX', 'happyinstrument635@agentmail.to')
+  return readEnv('AGENTMAIL_INBOX')
 }
 
 export function readAgentmailApiKey() {
