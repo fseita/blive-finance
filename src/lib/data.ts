@@ -11,6 +11,7 @@ import {
   processMockPedido,
   saveMockUnidadeEmailConfig,
   submitMockPedido,
+  deleteMockPedido,
 } from './mock-store'
 import { supabase } from './supabase'
 
@@ -69,11 +70,16 @@ export async function saveUnidadeEmailConfigs(configs: UnidadeEmailConfig[]) {
     return
   }
 
-  const payload = configs.map(({ unidade, ...item }) => ({
-    ...item,
-    novo_pedido_email: normalizeNullableEmail(item.novo_pedido_email),
-    pedido_pago_email: normalizeNullableEmail(item.pedido_pago_email),
-  }))
+  const payload = configs.map((config) => {
+    const { unidade, ...item } = config
+    void unidade
+
+    return {
+      ...item,
+      novo_pedido_email: normalizeNullableEmail(item.novo_pedido_email),
+      pedido_pago_email: normalizeNullableEmail(item.pedido_pago_email),
+    }
+  })
 
   const { error } = await supabase.from('unidade_email_config').upsert(payload, { onConflict: 'unidade_id' })
   if (error) throw error
@@ -138,6 +144,24 @@ export async function processPedidoPagamento(pedido: Pick<PedidoPagamento, 'id' 
     },
     true,
   )
+}
+
+export async function deletePedidoPagamento(pedido: Pick<PedidoPagamento, 'id' | 'ficheiro_url'>) {
+  if (isMockMode) {
+    deleteMockPedido(pedido.id)
+    return
+  }
+
+  const { error } = await supabase.from('pedidos_pagamento').delete().eq('id', pedido.id)
+  if (error) throw error
+
+  const storagePath = getComprovativoStoragePath(pedido.ficheiro_url)
+  if (!storagePath) return
+
+  const { error: storageError } = await supabase.storage.from('comprovativos-pagamento').remove([storagePath])
+  if (storageError) {
+    console.warn('Não foi possível apagar o comprovativo do storage.', storageError)
+  }
 }
 
 async function createTransacao(tipo: 'Receita' | 'Despesa', payload: Omit<Transacao, 'id' | 'tipo' | 'pedido_pagamento_id'>) {
@@ -216,4 +240,18 @@ async function safeReadJson(response: Response) {
 function normalizeNullableEmail(value: string | null | undefined) {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
+}
+
+function getComprovativoStoragePath(publicUrl: string) {
+  try {
+    const url = new URL(publicUrl)
+    const marker = '/storage/v1/object/public/comprovativos-pagamento/'
+    const index = url.pathname.indexOf(marker)
+
+    if (index === -1) return null
+
+    return decodeURIComponent(url.pathname.slice(index + marker.length))
+  } catch {
+    return null
+  }
 }

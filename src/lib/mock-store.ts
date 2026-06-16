@@ -70,12 +70,20 @@ export function getMockUnidadeEmailConfig(): UnidadeEmailConfig[] {
 export function saveMockUnidadeEmailConfig(configs: UnidadeEmailConfig[]) {
   writeJson(
     KEYS.unidadeEmailConfig,
-    configs.map(({ unidade, ...item }) => item),
+    configs.map((config) => {
+      const { unidade, ...item } = config
+      void unidade
+      return item
+    }),
   )
 }
 
 export function submitMockPedido(input: Omit<PedidoPagamento, 'criado_em' | 'estado' | 'unidade'>) {
-  const pedidos = getMockPedidos().map(({ unidade, ...pedido }) => pedido)
+  const pedidos = getMockPedidos().map((pedido) => {
+    const { unidade, ...rest } = pedido
+    void unidade
+    return rest
+  })
   const next: PedidoPagamento = {
     ...input,
     criado_em: new Date().toISOString(),
@@ -87,7 +95,11 @@ export function submitMockPedido(input: Omit<PedidoPagamento, 'criado_em' | 'est
 }
 
 export function processMockPedido(pedidoId: string, categoria: string) {
-  const pedidos = getMockPedidos().map(({ unidade, ...pedido }) => pedido)
+  const pedidos = getMockPedidos().map((pedido) => {
+    const { unidade, ...rest } = pedido
+    void unidade
+    return rest
+  })
   const index = pedidos.findIndex((pedido) => pedido.id === pedidoId)
   if (index === -1) throw new Error('Pedido não encontrado')
 
@@ -107,6 +119,21 @@ export function processMockPedido(pedidoId: string, categoria: string) {
     pedido_pagamento_id: pedido.id,
   })
   writeJson(KEYS.transacoes, transacoes)
+}
+
+export function deleteMockPedido(pedidoId: string) {
+  const pedidos = getMockPedidos().map((pedido) => {
+    const { unidade, ...rest } = pedido
+    void unidade
+    return rest
+  })
+  const next = pedidos.filter((pedido) => pedido.id !== pedidoId)
+
+  if (next.length === pedidos.length) {
+    throw new Error('Pedido não encontrado')
+  }
+
+  writeJson(KEYS.pedidos, next)
 }
 
 function createMockTransacao(tipo: 'Receita' | 'Despesa', input: Omit<Transacao, 'id' | 'tipo' | 'pedido_pagamento_id'>) {

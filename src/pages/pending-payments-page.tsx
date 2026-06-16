@@ -1,12 +1,13 @@
-import { AlertCircle, ArrowUpRight } from 'lucide-react'
+import { AlertCircle, ArrowUpRight, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { EmptyState } from '../components/common/empty-state'
 import { ManualPaymentForm } from '../components/forms/manual-payment-form'
 import { PageHeader } from '../components/common/page-header'
 import { SectionCard } from '../components/common/section-card'
 import { StatusBadge } from '../components/common/status-badge'
 import { ProcessPaymentModal } from '../components/payments/process-payment-modal'
-import { listPendingPedidos } from '../lib/data'
+import { deletePedidoPagamento, listPendingPedidos } from '../lib/data'
 import { formatCurrency, formatDate } from '../lib/format'
 import { parsePaymentDestination } from '../lib/payment-destination'
 import type { PedidoPagamento } from '../types/database'
@@ -14,6 +15,7 @@ import type { PedidoPagamento } from '../types/database'
 export function PendingPaymentsPage() {
   const [pedidos, setPedidos] = useState<PedidoPagamento[]>([])
   const [selectedPedido, setSelectedPedido] = useState<PedidoPagamento | null>(null)
+  const [deletingPedidoId, setDeletingPedidoId] = useState<string | null>(null)
 
   const loadPedidos = async () => {
     const data = await listPendingPedidos()
@@ -21,8 +23,35 @@ export function PendingPaymentsPage() {
   }
 
   useEffect(() => {
-    loadPedidos()
+    let isActive = true
+
+    void (async () => {
+      const data = await listPendingPedidos()
+      if (isActive) setPedidos(data)
+    })()
+
+    return () => {
+      isActive = false
+    }
   }, [])
+
+  const handleDeletePedido = async (pedido: PedidoPagamento) => {
+    const confirmed = window.confirm(`Apagar o pedido de pagamento de ${pedido.nome_submissor} no valor de ${formatCurrency(Number(pedido.valor))}?`)
+    if (!confirmed) return
+
+    setDeletingPedidoId(pedido.id)
+
+    try {
+      await deletePedidoPagamento(pedido)
+      if (selectedPedido?.id === pedido.id) setSelectedPedido(null)
+      await loadPedidos()
+      toast.success('Pedido apagado com sucesso.')
+    } catch {
+      toast.error('Não foi possível apagar o pedido.')
+    } finally {
+      setDeletingPedidoId(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -94,13 +123,24 @@ export function PendingPaymentsPage() {
                 </a>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedPedido(pedido)}
-                className="w-full rounded-2xl bg-[#9FB941] px-5 py-3 font-medium text-slate-950 transition hover:bg-[#b2cc54] lg:w-auto"
-              >
-                Processar pagamento
-              </button>
+              <div className="flex w-full flex-col gap-3 lg:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPedido(pedido)}
+                  className="w-full rounded-2xl bg-[#9FB941] px-5 py-3 font-medium text-slate-950 transition hover:bg-[#b2cc54] lg:w-auto"
+                >
+                  Processar pagamento
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeletePedido(pedido)}
+                  disabled={deletingPedidoId === pedido.id}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-500/30 px-5 py-3 font-medium text-red-200 transition hover:border-red-400/50 hover:text-white disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
+                >
+                  <Trash2 size={16} />
+                  {deletingPedidoId === pedido.id ? 'A apagar...' : 'Apagar pedido'}
+                </button>
+              </div>
             </SectionCard>
           )})
         )}
