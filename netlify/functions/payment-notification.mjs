@@ -33,7 +33,7 @@ export default async function handler(event) {
 
     const { data: pedido, error: pedidoError } = await supabaseAdmin
       .from('pedidos_pagamento')
-      .select('id, ficheiro_url')
+      .select('id, ficheiro_url, email_submissor, nome_submissor')
       .eq('id', payload.pedidoId)
       .maybeSingle()
 
@@ -44,7 +44,7 @@ export default async function handler(event) {
 
     const recipient = payload.eventType === 'new-payment-request' ? config?.novo_pedido_email : config?.pedido_pago_email
 
-    if (!recipient) {
+    if (!recipient && payload.eventType !== 'new-payment-request') {
       return json(422, { error: `Não existe email configurado para ${payload.eventType === 'new-payment-request' ? 'novo pedido' : 'pedido pago'} em ${unidadeNome}.` })
     }
 
@@ -57,27 +57,70 @@ export default async function handler(event) {
       ? [await buildAttachmentFromUrl(pedido.ficheiro_url)]
       : undefined
 
-    const delivery = await sendAgentmailEmail({
-      to: recipient,
-      subject: message.subject,
-      text: message.text,
-      html: message.html,
-      attachments,
-      replyTo: payload.eventType === 'payment-paid' && config?.novo_pedido_email ? [config.novo_pedido_email] : undefined,
-      fromName: 'Blive Finance',
-    })
+    let delivery = null
 
-    await supabaseAdmin.from('notificacoes_mock').insert({
-      tipo: payload.eventType === 'new-payment-request' ? 'email_novo_pedido_enviado' : 'email_pedido_pago_enviado',
-      destino: recipient,
-      assunto: message.subject,
-      payload: {
-        pedido_id: payload.pedidoId,
-        unidade_id: payload.unidadeId,
-        unidade_nome: unidadeNome,
-        agentmail_message_id: delivery?.message_id ?? null,
-      },
-    })
+    if (recipient) {
+      delivery = await sendAgentmailEmail({
+        to: recipient,
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+        attachments,
+        replyTo: payload.eventType === 'payment-paid' && config?.novo_pedido_email ? [config.novo_pedido_email] : undefined,
+        fromName: 'Blive Finance',
+      })
+    }
+
+    if (payload.eventType === 'new-payment-request') {
+      const submitterEmail = normalizeEmail(payload.emailSubmissor || pedido?.email_submissor)
+
+      if (!submitterEmail) {
+        return json(422, { error: 'Falta o email do submissor para enviar a confirmação de recepção.' })
+      }
+
+      const confirmation = buildSubmitterConfirmationMessage(payload, unidadeNome)
+
+      await sendAgentmailEmail({
+        to: submitterEmail,
+        subject: confirmation.subject,
+        text: confirmation.text,
+        html: confirmation.html,
+        fromName: 'Blive Finance',
+      })
+    }
+
+    const notifications = []
+
+    if (recipient) {
+      notifications.push({
+        tipo: payload.eventType === 'new-payment-request' ? 'email_novo_pedido_enviado' : 'email_pedido_pago_enviado',
+        destino: recipient,
+        assunto: message.subject,
+        payload: {
+          pedido_id: payload.pedidoId,
+          unidade_id: payload.unidadeId,
+          unidade_nome: unidadeNome,
+          agentmail_message_id: delivery?.message_id ?? null,
+        },
+      })
+    }
+
+    if (payload.eventType === 'new-payment-request') {
+      notifications.push({
+        tipo: 'email_confirmacao_submissor_enviado',
+        destino: normalizeEmail(payload.emailSubmissor || pedido?.email_submissor),
+        assunto: `Pedido recebido · ${unidadeNome}`,
+        payload: {
+          pedido_id: payload.pedidoId,
+          unidade_id: payload.unidadeId,
+          unidade_nome: unidadeNome,
+        },
+      })
+    }
+
+    if (notifications.length > 0) {
+      await supabaseAdmin.from('notificacoes_mock').insert(notifications)
+    }
 
     return json(200, { ok: true })
   } catch (error) {
@@ -136,6 +179,34 @@ function buildMessage(payload, unidadeNome, novoPedidoEmail) {
   return { subject, text, html }
 }
 
+function buildSubmitterConfirmationMessage(payload, unidadeNome) {
+  const valor = formatCurrency(payload.valor)
+  const subject = `Pedido recebido · ${unidadeNome}`
+  const text = [
+    `Olá ${payload.nomeSubmissor},`,
+    '',
+    `Confirmamos que recebemos o teu pedido de pagamento para ${unidadeNome}.`,
+    `Valor: ${valor}`,
+    payload.dataLimite ? `Data limite: ${payload.dataLimite}` : null,
+    payload.descricao ? `Descrição: ${payload.descricao}` : null,
+    '',
+    'A equipa BLIVE vai agora validar o pedido.',
+  ].filter(Boolean).join('\n')
+
+  const html = `
+    <p>Olá ${escapeHtml(payload.nomeSubmissor)},</p>
+    <p>Confirmamos que recebemos o teu pedido de pagamento para <strong>${escapeHtml(unidadeNome)}</strong>.</p>
+    <ul>
+      <li><strong>Valor:</strong> ${escapeHtml(valor)}</li>
+      ${payload.dataLimite ? `<li><strong>Data limite:</strong> ${escapeHtml(payload.dataLimite)}</li>` : ''}
+      ${payload.descricao ? `<li><strong>Descrição:</strong> ${escapeHtml(payload.descricao)}</li>` : ''}
+    </ul>
+    <p>A equipa BLIVE vai agora validar o pedido.</p>
+  `
+
+  return { subject, text, html }
+}
+
 async function buildAttachmentFromUrl(url) {
   const response = await fetch(url)
   if (!response.ok) {
@@ -156,6 +227,11 @@ async function buildAttachmentFromUrl(url) {
 
 function formatCurrency(value) {
   return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(Number(value || 0))
+}
+
+function normalizeEmail(value) {
+  const trimmed = value?.trim()
+  return trimmed || null
 }
 
 function escapeHtml(value) {

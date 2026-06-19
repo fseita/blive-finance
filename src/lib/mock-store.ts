@@ -49,6 +49,7 @@ export function getMockPedidos(): PedidoPagamento[] {
   const unidades = getMockUnidades()
   return readJson(KEYS.pedidos, mockPedidosPagamento).map((pedido) => ({
     ...pedido,
+    email_submissor: pedido.email_submissor ?? '',
     unidade: unidades.find((unit) => unit.id === pedido.unidade_id),
   }))
 }

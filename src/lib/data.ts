@@ -26,6 +26,7 @@ interface PaymentEventPayload {
   unidadeId: string
   unidadeNome?: string
   nomeSubmissor: string
+  emailSubmissor?: string
   valor: number
   dataLimite?: string
   descricao?: string
@@ -89,7 +90,7 @@ export async function listPendingPedidos(): Promise<PedidoPagamento[]> {
   if (isMockMode) return getMockPedidos().filter((pedido) => pedido.estado === 'Pendente')
   const { data, error } = await supabase
     .from('pedidos_pagamento')
-    .select('id, criado_em, unidade_id, nome_submissor, iban, valor, data_limite, descricao, ficheiro_url, estado, unidade:unidades(id, nome, conta_bancaria_nome)')
+    .select('id, criado_em, unidade_id, nome_submissor, email_submissor, iban, valor, data_limite, descricao, ficheiro_url, estado, unidade:unidades(id, nome, conta_bancaria_nome)')
     .eq('estado', 'Pendente')
     .order('criado_em', { ascending: true })
   if (error) throw error
@@ -118,13 +119,14 @@ export async function createPedidoPagamento(payload: Omit<PedidoPagamento, 'id' 
     pedidoId,
     unidadeId: payload.unidade_id,
     nomeSubmissor: payload.nome_submissor,
+    emailSubmissor: payload.email_submissor,
     valor: Number(payload.valor),
     dataLimite: payload.data_limite,
     descricao: payload.descricao,
   })
 }
 
-export async function processPedidoPagamento(pedido: Pick<PedidoPagamento, 'id' | 'unidade_id' | 'nome_submissor' | 'valor'> & { unidade?: Unidade }, categoria: string): Promise<NotificationResult> {
+export async function processPedidoPagamento(pedido: Pick<PedidoPagamento, 'id' | 'unidade_id' | 'nome_submissor' | 'email_submissor' | 'valor'> & { unidade?: Unidade }, categoria: string): Promise<NotificationResult> {
   if (isMockMode) {
     processMockPedido(pedido.id, categoria)
     return { ok: true }
@@ -139,6 +141,7 @@ export async function processPedidoPagamento(pedido: Pick<PedidoPagamento, 'id' 
       unidadeId: pedido.unidade_id,
       unidadeNome: pedido.unidade?.nome,
       nomeSubmissor: pedido.nome_submissor,
+      emailSubmissor: pedido.email_submissor,
       valor: Number(pedido.valor),
       categoria,
     },

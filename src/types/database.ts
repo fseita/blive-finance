@@ -20,6 +20,7 @@ export interface PedidoPagamento {
   criado_em: string
   unidade_id: string
   nome_submissor: string
+  email_submissor: string
   iban: string
   valor: number
   data_limite: string

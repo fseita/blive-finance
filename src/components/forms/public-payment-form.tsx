@@ -12,6 +12,7 @@ import type { Unidade } from '../../types/database'
 const baseSchema = {
   unidade_id: z.string().min(1, 'Escolhe a unidade'),
   nome_submissor: z.string().min(2, 'Indica o teu nome'),
+  email_submissor: z.string().email('Indica um email válido'),
   valor: z.coerce.number().positive('O valor tem de ser superior a zero'),
   data_limite: z.string().min(1, 'Escolhe a data limite'),
   descricao: z.string().min(5, 'Descreve a despesa'),
@@ -75,6 +76,7 @@ export function PublicPaymentForm() {
       const result = await createPedidoPagamento({
         unidade_id: values.unidade_id,
         nome_submissor: values.nome_submissor,
+        email_submissor: values.email_submissor,
         iban: values.metodo_pagamento === 'multibanco'
           ? encodePaymentDestination({ method: 'multibanco', entidade: values.entidade, referencia: values.referencia })
           : encodePaymentDestination({ method: 'transferencia', iban: values.iban }),
@@ -109,6 +111,10 @@ export function PublicPaymentForm() {
           <input {...register('nome_submissor')} className="input-base" placeholder="Nome completo" required aria-required="true" />
         </Field>
       </div>
+
+      <Field label="Email do submissor" required error={errors.email_submissor?.message}>
+        <input type="email" {...register('email_submissor')} className="input-base" placeholder="nome@exemplo.com" required aria-required="true" />
+      </Field>
 
       <div className="grid gap-5 lg:grid-cols-12">
         <div className="lg:col-span-6">

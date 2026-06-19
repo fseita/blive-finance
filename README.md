@@ -45,6 +45,7 @@ npm run dev
 
 ## Emails automáticos
 - Novo pedido submetido -> envia email para o endereço configurado em `Email para novo pedido` da unidade.
+- Novo pedido submetido -> envia também email de confirmação para o email do próprio submissor.
 - Pedido marcado como pago -> envia email para o endereço configurado em `Email para pedido pago` da unidade.
 - Os endereços são geridos na área `/admin/configuracoes`.
 

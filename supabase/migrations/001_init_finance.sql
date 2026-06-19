@@ -11,6 +11,7 @@ create table if not exists public.pedidos_pagamento (
   criado_em timestamptz not null default timezone('utc', now()),
   unidade_id uuid not null references public.unidades(id) on delete restrict,
   nome_submissor text not null,
+  email_submissor text not null,
   iban text not null,
   valor numeric(12,2) not null check (valor > 0),
   data_limite date not null,
