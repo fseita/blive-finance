@@ -215,15 +215,19 @@ async function notifyPaymentEvent(payload: PaymentEventPayload, requireAuth = fa
       body: JSON.stringify(payload),
     })
 
+    const body = await safeReadJson(response)
+
     if (!response.ok) {
-      const body = await safeReadJson(response)
       return {
         ok: false,
         warning: body?.error ?? 'O email automático não foi enviado.',
       }
     }
 
-    return { ok: true }
+    return {
+      ok: body?.ok ?? true,
+      warning: body?.warning ?? undefined,
+    }
   } catch {
     return {
       ok: false,

@@ -58,17 +58,28 @@ export default async function handler(event) {
       : undefined
 
     let delivery = null
+    let submitterDelivery = null
+    const warnings = []
 
     if (recipient) {
-      delivery = await sendAgentmailEmail({
-        to: recipient,
-        subject: message.subject,
-        text: message.text,
-        html: message.html,
-        attachments,
-        replyTo: payload.eventType === 'payment-paid' && config?.novo_pedido_email ? [config.novo_pedido_email] : undefined,
-        fromName: 'Blive Finance',
-      })
+      try {
+        delivery = await sendAgentmailEmail({
+          to: recipient,
+          subject: message.subject,
+          text: message.text,
+          html: message.html,
+          attachments,
+          replyTo: payload.eventType === 'payment-paid' && config?.novo_pedido_email ? [config.novo_pedido_email] : undefined,
+          fromName: 'Blive Finance',
+        })
+      } catch (error) {
+        warnings.push(formatDeliveryError({
+          error,
+          recipient,
+          kind: payload.eventType === 'new-payment-request' ? 'novo pedido' : 'pedido pago',
+          unidadeNome,
+        }))
+      }
     }
 
     if (payload.eventType === 'new-payment-request') {
@@ -80,18 +91,27 @@ export default async function handler(event) {
 
       const confirmation = buildSubmitterConfirmationMessage(payload, unidadeNome)
 
-      await sendAgentmailEmail({
-        to: submitterEmail,
-        subject: confirmation.subject,
-        text: confirmation.text,
-        html: confirmation.html,
-        fromName: 'Blive Finance',
-      })
+      try {
+        submitterDelivery = await sendAgentmailEmail({
+          to: submitterEmail,
+          subject: confirmation.subject,
+          text: confirmation.text,
+          html: confirmation.html,
+          fromName: 'Blive Finance',
+        })
+      } catch (error) {
+        warnings.push(formatDeliveryError({
+          error,
+          recipient: submitterEmail,
+          kind: 'confirmação ao submissor',
+          unidadeNome,
+        }))
+      }
     }
 
     const notifications = []
 
-    if (recipient) {
+    if (recipient && delivery) {
       notifications.push({
         tipo: payload.eventType === 'new-payment-request' ? 'email_novo_pedido_enviado' : 'email_pedido_pago_enviado',
         destino: recipient,
@@ -105,7 +125,7 @@ export default async function handler(event) {
       })
     }
 
-    if (payload.eventType === 'new-payment-request') {
+    if (payload.eventType === 'new-payment-request' && submitterDelivery) {
       notifications.push({
         tipo: 'email_confirmacao_submissor_enviado',
         destino: normalizeEmail(payload.emailSubmissor || pedido?.email_submissor),
@@ -114,6 +134,7 @@ export default async function handler(event) {
           pedido_id: payload.pedidoId,
           unidade_id: payload.unidadeId,
           unidade_nome: unidadeNome,
+          agentmail_message_id: submitterDelivery?.message_id ?? null,
         },
       })
     }
@@ -122,7 +143,11 @@ export default async function handler(event) {
       await supabaseAdmin.from('notificacoes_mock').insert(notifications)
     }
 
-    return json(200, { ok: true })
+    return json(200, {
+      ok: warnings.length === 0,
+      warning: warnings[0] ?? null,
+      warnings,
+    })
   } catch (error) {
     return json(500, { error: error instanceof Error ? error.message : 'Falha inesperada ao enviar email.' })
   }
@@ -232,6 +257,24 @@ function formatCurrency(value) {
 function normalizeEmail(value) {
   const trimmed = value?.trim()
   return trimmed || null
+}
+
+function formatDeliveryError({ error, recipient, kind, unidadeNome }) {
+  const message = error instanceof Error ? error.message : String(error || 'Erro desconhecido no envio de email.')
+  const normalizedRecipient = normalizeEmail(recipient)
+  const lowerMessage = message.toLowerCase()
+
+  if (lowerMessage.includes('suppressed') || lowerMessage.includes('unsubscribed') || lowerMessage.includes('recipient(s) blocked')) {
+    return normalizedRecipient
+      ? `O email de ${kind} para ${normalizedRecipient} não foi entregue porque esse destinatário está bloqueado/suprimido no AgentMail. O pedido ficou registado na mesma.`
+      : `O email de ${kind} de ${unidadeNome} não foi entregue porque o destinatário está bloqueado/suprimido no AgentMail. O pedido ficou registado na mesma.`
+  }
+
+  if (normalizedRecipient) {
+    return `Falhou o envio do email de ${kind} para ${normalizedRecipient}. ${message}`
+  }
+
+  return `Falhou o envio do email de ${kind} de ${unidadeNome}. ${message}`
 }
 
 function escapeHtml(value) {
