@@ -17,31 +17,28 @@ export function readSupabaseAnonKey() {
   return readEnv('SUPABASE_ANON_KEY') ?? readEnv('VITE_SUPABASE_ANON_KEY') ?? readDotEnvValue('VITE_SUPABASE_ANON_KEY')
 }
 
-export function readAgentmailInbox() {
-  return readEnv('AGENTMAIL_INBOX')
+export function readGmailFrom() {
+  return readEnv('BLIVE_FINANCE_GMAIL_FROM') ?? readEnv('GMAIL_FROM') ?? readEnv('GMAIL_EMAIL')
 }
 
-export function readAgentmailApiKey() {
-  return readEnv('AGENTMAIL_API_KEY') ?? readOpenClawAgentmailKey()
+export function readGmailClientId() {
+  return readEnv('BLIVE_FINANCE_GMAIL_CLIENT_ID') ?? readEnv('GMAIL_CLIENT_ID')
 }
 
-function readDotEnvValue(key) {
+export function readGmailClientSecret() {
+  return readEnv('BLIVE_FINANCE_GMAIL_CLIENT_SECRET') ?? readEnv('GMAIL_CLIENT_SECRET')
+}
+
+export function readGmailRefreshToken() {
+  return readEnv('BLIVE_FINANCE_GMAIL_REFRESH_TOKEN') ?? readEnv('GMAIL_REFRESH_TOKEN')
+}
+
+export function readDotEnvValue(key) {
   try {
     const envPath = path.join(PROJECT_ROOT, '.env.local')
     const text = fs.readFileSync(envPath, 'utf8')
     const match = text.match(new RegExp(`^${key}=(.*)$`, 'm'))
     return match?.[1] ?? null
-  } catch {
-    return null
-  }
-}
-
-function readOpenClawAgentmailKey() {
-  try {
-    const configPath = path.resolve(PROJECT_ROOT, '..', 'openclaw.json')
-    const raw = fs.readFileSync(configPath, 'utf8')
-    const config = JSON.parse(raw)
-    return config?.skills?.entries?.agentmail?.env?.AGENTMAIL_API_KEY ?? null
   } catch {
     return null
   }

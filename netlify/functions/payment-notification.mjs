@@ -1,4 +1,4 @@
-import { sendAgentmailEmail } from './_lib/agentmail.mjs'
+import { sendGmailEmail } from './_lib/gmail.mjs'
 import { createSupabaseAdminClient, createSupabaseAuthClient } from './_lib/supabase.mjs'
 
 export default async function handler(event) {
@@ -43,8 +43,9 @@ export default async function handler(event) {
     const unidadeNome = payload.unidadeNome || unidade?.nome || 'Unidade BLIVE'
 
     const recipient = payload.eventType === 'new-payment-request' ? config?.novo_pedido_email : config?.pedido_pago_email
+    const recipients = normalizeEmailList(recipient)
 
-    if (!recipient && payload.eventType !== 'new-payment-request') {
+    if (recipients.length === 0 && payload.eventType !== 'new-payment-request') {
       return json(422, { error: `Não existe email configurado para ${payload.eventType === 'new-payment-request' ? 'novo pedido' : 'pedido pago'} em ${unidadeNome}.` })
     }
 
@@ -61,10 +62,10 @@ export default async function handler(event) {
     let submitterDelivery = null
     const warnings = []
 
-    if (recipient) {
+    if (recipients.length > 0) {
       try {
-        delivery = await sendAgentmailEmail({
-          to: recipient,
+        delivery = await sendGmailEmail({
+          to: recipients,
           subject: message.subject,
           text: message.text,
           html: message.html,
@@ -75,7 +76,7 @@ export default async function handler(event) {
       } catch (error) {
         warnings.push(formatDeliveryError({
           error,
-          recipient,
+          recipient: recipients,
           kind: payload.eventType === 'new-payment-request' ? 'novo pedido' : 'pedido pago',
           unidadeNome,
         }))
@@ -92,7 +93,7 @@ export default async function handler(event) {
       const confirmation = buildSubmitterConfirmationMessage(payload, unidadeNome)
 
       try {
-        submitterDelivery = await sendAgentmailEmail({
+        submitterDelivery = await sendGmailEmail({
           to: submitterEmail,
           subject: confirmation.subject,
           text: confirmation.text,
@@ -111,16 +112,18 @@ export default async function handler(event) {
 
     const notifications = []
 
-    if (recipient && delivery) {
+    if (recipients.length > 0 && delivery) {
       notifications.push({
         tipo: payload.eventType === 'new-payment-request' ? 'email_novo_pedido_enviado' : 'email_pedido_pago_enviado',
-        destino: recipient,
+        destino: recipients.join(', '),
         assunto: message.subject,
         payload: {
           pedido_id: payload.pedidoId,
           unidade_id: payload.unidadeId,
           unidade_nome: unidadeNome,
-          agentmail_message_id: delivery?.message_id ?? null,
+          email_provider: 'gmail',
+          gmail_message_id: delivery?.id ?? null,
+          recipients,
         },
       })
     }
@@ -134,7 +137,8 @@ export default async function handler(event) {
           pedido_id: payload.pedidoId,
           unidade_id: payload.unidadeId,
           unidade_nome: unidadeNome,
-          agentmail_message_id: submitterDelivery?.message_id ?? null,
+          email_provider: 'gmail',
+          gmail_message_id: submitterDelivery?.id ?? null,
         },
       })
     }
@@ -259,19 +263,27 @@ function normalizeEmail(value) {
   return trimmed || null
 }
 
+function normalizeEmailList(value) {
+  return String(value || '')
+    .split(/[,\n;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 function formatDeliveryError({ error, recipient, kind, unidadeNome }) {
   const message = error instanceof Error ? error.message : String(error || 'Erro desconhecido no envio de email.')
-  const normalizedRecipient = normalizeEmail(recipient)
+  const normalizedRecipients = Array.isArray(recipient) ? recipient.map(normalizeEmail).filter(Boolean) : [normalizeEmail(recipient)].filter(Boolean)
+  const recipientLabel = normalizedRecipients.join(', ')
   const lowerMessage = message.toLowerCase()
 
   if (lowerMessage.includes('suppressed') || lowerMessage.includes('unsubscribed') || lowerMessage.includes('recipient(s) blocked')) {
-    return normalizedRecipient
-      ? `O email de ${kind} para ${normalizedRecipient} não foi entregue porque esse destinatário está bloqueado/suprimido no AgentMail. O pedido ficou registado na mesma.`
-      : `O email de ${kind} de ${unidadeNome} não foi entregue porque o destinatário está bloqueado/suprimido no AgentMail. O pedido ficou registado na mesma.`
+    return recipientLabel
+      ? `O email de ${kind} para ${recipientLabel} não foi entregue porque pelo menos um destinatário está bloqueado/suprimido. O pedido ficou registado na mesma.`
+      : `O email de ${kind} de ${unidadeNome} não foi entregue porque pelo menos um destinatário está bloqueado/suprimido. O pedido ficou registado na mesma.`
   }
 
-  if (normalizedRecipient) {
-    return `Falhou o envio do email de ${kind} para ${normalizedRecipient}. ${message}`
+  if (recipientLabel) {
+    return `Falhou o envio do email de ${kind} para ${recipientLabel}. ${message}`
   }
 
   return `Falhou o envio do email de ${kind} de ${unidadeNome}. ${message}`

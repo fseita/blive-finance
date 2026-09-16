@@ -40,7 +40,7 @@ export function SettingsPage() {
       <PageHeader
         eyebrow="Configuração"
         title="Emails automáticos"
-        description="Define para que endereço segue a notificação de novo pedido e a confirmação de pedido pago em cada unidade."
+        description="Define para que endereço, ou endereços, segue a notificação de novo pedido e a confirmação de pedido pago em cada unidade."
         actions={
           <button
             type="button"
@@ -59,7 +59,7 @@ export function SettingsPage() {
           <Mail className="mt-0.5 text-[#9FB941]" size={18} />
           <div>
             <p className="font-medium text-white">Como funciona</p>
-            <p className="mt-1 text-slate-400">Quando entra um novo pedido, enviamos email para o endereço configurado em "Novo pedido". Quando marcas esse pedido como pago, enviamos a confirmação para o endereço configurado em "Pedido pago".</p>
+            <p className="mt-1 text-slate-400">Quando entra um novo pedido, enviamos email para o endereço configurado em "Novo pedido". Quando marcas esse pedido como pago, enviamos a confirmação para o endereço configurado em "Pedido pago". Se precisares de mais do que um destinatário, separa os emails por vírgula.</p>
           </div>
         </div>
 
@@ -79,22 +79,22 @@ export function SettingsPage() {
                 <label className="block">
                   <span className="mb-2 block text-sm font-medium text-slate-200">Email para novo pedido</span>
                   <input
-                    type="email"
+                    type="text"
                     value={item.novo_pedido_email ?? ''}
                     onChange={(event) => handleChange(item.unidade_id, 'novo_pedido_email', event.target.value)}
                     className="input-base"
-                    placeholder="ex: gestao@blive.pt"
+                    placeholder="ex: pedrovictor.blive@gmail.com, fseita@gmail.com"
                   />
                 </label>
 
                 <label className="block">
                   <span className="mb-2 block text-sm font-medium text-slate-200">Email para pedido pago</span>
                   <input
-                    type="email"
+                    type="text"
                     value={item.pedido_pago_email ?? ''}
                     onChange={(event) => handleChange(item.unidade_id, 'pedido_pago_email', event.target.value)}
                     className="input-base"
-                    placeholder="ex: beja@blivepilates.com"
+                    placeholder="ex: pedrovictor.blive@gmail.com, fseita@gmail.com"
                   />
                 </label>
               </div>

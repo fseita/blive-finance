@@ -8,7 +8,7 @@ Sistema de Gestão Financeira para o Grupo BLIVE.
 - Supabase (PostgreSQL, Auth, Storage)
 - Recharts para gráficos
 - Netlify Functions para automatismos de email
-- AgentMail para envio de notificações
+- Gmail OAuth para envio de notificações
 
 ## Arranque rápido
 ```bash
@@ -24,8 +24,12 @@ npm run dev
 
 ### Server-side / Netlify Functions
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `AGENTMAIL_API_KEY`
-- `AGENTMAIL_INBOX` (inbox AgentMail usado para enviar estes emails)
+- `BLIVE_FINANCE_GMAIL_FROM`
+- `BLIVE_FINANCE_GMAIL_CLIENT_ID`
+- `BLIVE_FINANCE_GMAIL_CLIENT_SECRET`
+- `BLIVE_FINANCE_GMAIL_REFRESH_TOKEN`
+
+Em alternativa, o backend também consegue reutilizar `GMAIL_FROM`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET` e `GMAIL_REFRESH_TOKEN`, ou ler `/root/.openclaw/workspace/secrets/google_oauth.json` quando esse ficheiro existe no ambiente onde a function corre.
 
 ## Estrutura
 - `/submeter-pagamento` -> portal público para pedidos de pagamento
@@ -41,12 +45,13 @@ npm run dev
 3. Executar também `supabase/migrations/002_unit_email_config.sql`.
 4. Criar pelo menos um utilizador autenticado no painel do Supabase Auth.
 5. Copiar URL e anon key para `.env.local`.
-6. Adicionar `SUPABASE_SERVICE_ROLE_KEY`, `AGENTMAIL_API_KEY` e `AGENTMAIL_INBOX` no ambiente do Netlify.
+6. Adicionar `SUPABASE_SERVICE_ROLE_KEY`, `BLIVE_FINANCE_GMAIL_FROM`, `BLIVE_FINANCE_GMAIL_CLIENT_ID`, `BLIVE_FINANCE_GMAIL_CLIENT_SECRET` e `BLIVE_FINANCE_GMAIL_REFRESH_TOKEN` no ambiente do Netlify.
 
 ## Emails automáticos
 - Novo pedido submetido -> envia email para o endereço configurado em `Email para novo pedido` da unidade.
 - Novo pedido submetido -> envia também email de confirmação para o email do próprio submissor.
 - Pedido marcado como pago -> envia email para o endereço configurado em `Email para pedido pago` da unidade.
+- Os campos `Email para novo pedido` e `Email para pedido pago` aceitam vários destinatários, separados por vírgulas.
 - Os endereços são geridos na área `/admin/configuracoes`.
 
 ## Notas
