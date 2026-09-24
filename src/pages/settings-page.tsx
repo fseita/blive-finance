@@ -83,7 +83,7 @@ export function SettingsPage() {
                     value={item.novo_pedido_email ?? ''}
                     onChange={(event) => handleChange(item.unidade_id, 'novo_pedido_email', event.target.value)}
                     className="input-base"
-                    placeholder="ex: pedrovictor.blive@gmail.com, fseita@gmail.com"
+                    placeholder="ex: email1@empresa.pt, email2@empresa.pt"
                   />
                 </label>
 
@@ -94,7 +94,7 @@ export function SettingsPage() {
                     value={item.pedido_pago_email ?? ''}
                     onChange={(event) => handleChange(item.unidade_id, 'pedido_pago_email', event.target.value)}
                     className="input-base"
-                    placeholder="ex: pedrovictor.blive@gmail.com, fseita@gmail.com"
+                    placeholder="ex: email1@empresa.pt, email2@empresa.pt"
                   />
                 </label>
               </div>
