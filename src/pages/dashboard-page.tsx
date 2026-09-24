@@ -1,3 +1,4 @@
+import { ArrowUpRight } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { FinanceCategoryChart } from '../components/charts/finance-category-chart'
 import { PageHeader } from '../components/common/page-header'
@@ -92,6 +93,16 @@ export function DashboardPage() {
                 <span className="rounded-full bg-white/8 px-3 py-1">{item.tipo}</span>
                 <span className="rounded-full bg-white/8 px-3 py-1">{item.metodo}</span>
               </div>
+              {item.ficheiro_url ? (
+                <a
+                  href={item.ficheiro_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-4 inline-flex items-center gap-2 text-sm text-[#9FB941] hover:text-[#b2cc54]"
+                >
+                  Ver comprovativo <ArrowUpRight size={15} />
+                </a>
+              ) : null}
             </div>
           ))}
         </div>
@@ -104,6 +115,7 @@ export function DashboardPage() {
                 <th className="pb-3">Tipo</th>
                 <th className="pb-3">Categoria</th>
                 <th className="pb-3">Método</th>
+                <th className="pb-3">Comprovativo</th>
                 <th className="pb-3 text-right">Valor</th>
               </tr>
             </thead>
@@ -114,6 +126,20 @@ export function DashboardPage() {
                   <td className="py-3">{item.tipo}</td>
                   <td className="py-3">{item.categoria}</td>
                   <td className="py-3">{item.metodo}</td>
+                  <td className="py-3">
+                    {item.ficheiro_url ? (
+                      <a
+                        href={item.ficheiro_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[#9FB941] hover:text-[#b2cc54]"
+                      >
+                        Ver ficheiro <ArrowUpRight size={14} />
+                      </a>
+                    ) : (
+                      <span className="text-slate-500">-</span>
+                    )}
+                  </td>
                   <td className="py-3 text-right">{formatCurrency(Number(item.valor))}</td>
                 </tr>
               ))}

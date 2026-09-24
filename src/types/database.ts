@@ -39,6 +39,7 @@ export interface Transacao {
   metodo: string
   categoria: string
   pedido_pagamento_id: string | null
+  ficheiro_url?: string | null
 }
 
 export interface DashboardFilters {

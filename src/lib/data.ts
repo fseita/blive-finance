@@ -33,6 +33,18 @@ interface PaymentEventPayload {
   categoria?: string
 }
 
+interface TransacaoRow {
+  id: string
+  data_transacao: string
+  unidade_id: string
+  tipo: Transacao['tipo']
+  valor: Transacao['valor']
+  metodo: string
+  categoria: string
+  pedido_pagamento_id: string | null
+  pedido?: { ficheiro_url: string | null } | { ficheiro_url: string | null }[] | null
+}
+
 export async function listUnidades(): Promise<Unidade[]> {
   if (isMockMode) return getMockUnidades()
   const { data, error } = await supabase.from('unidades').select('id, nome, conta_bancaria_nome').order('nome')
@@ -189,16 +201,37 @@ export async function listTransacoes(filters: { month: number; year: number; uni
   if (isMockMode) {
     const start = startOfMonth(new Date(filters.year, filters.month - 1, 1)).toISOString().slice(0, 10)
     const end = endOfMonth(new Date(filters.year, filters.month - 1, 1)).toISOString().slice(0, 10)
-    return getMockTransacoes().filter((item) => item.data_transacao >= start && item.data_transacao <= end && (filters.unidadeId === 'all' || item.unidade_id === filters.unidadeId))
+    const pedidosById = new Map(getMockPedidos().map((pedido) => [pedido.id, pedido]))
+
+    return getMockTransacoes()
+      .filter((item) => item.data_transacao >= start && item.data_transacao <= end && (filters.unidadeId === 'all' || item.unidade_id === filters.unidadeId))
+      .map((item) => ({
+        ...item,
+        ficheiro_url: item.pedido_pagamento_id ? pedidosById.get(item.pedido_pagamento_id)?.ficheiro_url ?? null : null,
+      }))
   }
 
   const start = startOfMonth(new Date(filters.year, filters.month - 1, 1)).toISOString().slice(0, 10)
   const end = endOfMonth(new Date(filters.year, filters.month - 1, 1)).toISOString().slice(0, 10)
-  let query = supabase.from('transacoes').select('id, data_transacao, unidade_id, tipo, valor, metodo, categoria, pedido_pagamento_id').gte('data_transacao', start).lte('data_transacao', end)
+  let query = supabase
+    .from('transacoes')
+    .select('id, data_transacao, unidade_id, tipo, valor, metodo, categoria, pedido_pagamento_id, pedido:pedidos_pagamento(ficheiro_url)')
+    .gte('data_transacao', start)
+    .lte('data_transacao', end)
   if (filters.unidadeId !== 'all') query = query.eq('unidade_id', filters.unidadeId)
   const { data, error } = await query.order('data_transacao')
   if (error) throw error
-  return (data ?? []) as Transacao[]
+  return ((data ?? []) as TransacaoRow[]).map((item) => ({
+    id: item.id,
+    data_transacao: item.data_transacao,
+    unidade_id: item.unidade_id,
+    tipo: item.tipo,
+    valor: item.valor,
+    metodo: item.metodo,
+    categoria: item.categoria,
+    pedido_pagamento_id: item.pedido_pagamento_id,
+    ficheiro_url: Array.isArray(item.pedido) ? item.pedido[0]?.ficheiro_url ?? null : item.pedido?.ficheiro_url ?? null,
+  })) as Transacao[]
 }
 
 async function notifyPaymentEvent(payload: PaymentEventPayload, requireAuth = false): Promise<NotificationResult> {
