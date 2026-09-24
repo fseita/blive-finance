@@ -62,10 +62,20 @@ export function getMockTransacoes(): Transacao[] {
 export function getMockUnidadeEmailConfig(): UnidadeEmailConfig[] {
   seedMockData()
   const unidades = getMockUnidades()
-  return readJson<Omit<UnidadeEmailConfig, 'unidade'>[]>(KEYS.unidadeEmailConfig, []).map((item) => ({
-    ...item,
-    unidade: unidades.find((unit) => unit.id === item.unidade_id),
-  }))
+  const rawConfigs = readJson<Omit<UnidadeEmailConfig, 'unidade'>[]>(KEYS.unidadeEmailConfig, [])
+  const configByUnit = new Map(rawConfigs.map((item) => [item.unidade_id, item]))
+
+  return unidades.map((unidade) => {
+    const config = configByUnit.get(unidade.id)
+
+    return {
+      unidade_id: unidade.id,
+      novo_pedido_email: config?.novo_pedido_email ?? '',
+      pedido_pago_email: config?.pedido_pago_email ?? '',
+      updated_at: config?.updated_at,
+      unidade,
+    }
+  })
 }
 
 export function saveMockUnidadeEmailConfig(configs: UnidadeEmailConfig[]) {

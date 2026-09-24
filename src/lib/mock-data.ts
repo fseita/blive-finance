@@ -4,6 +4,7 @@ export const mockUnidades: Unidade[] = [
   { id: 'u-beja', nome: 'Blive Pilates Beja', conta_bancaria_nome: 'Conta Operacional Beja' },
   { id: 'u-evora', nome: 'Blive Pilates Évora', conta_bancaria_nome: 'Conta Operacional Évora' },
   { id: 'u-areeiro', nome: 'Blive Pilates Areeiro', conta_bancaria_nome: 'Conta Operacional Areeiro' },
+  { id: 'u-alvalade', nome: 'Blive Pilates Alvalade', conta_bancaria_nome: 'Conta Operacional Alvalade' },
   { id: 'u-principe-real', nome: 'Blive Pilates Príncipe Real', conta_bancaria_nome: 'Conta Operacional Príncipe Real' },
   { id: 'u-telheiras', nome: 'Blive Pilates Telheiras', conta_bancaria_nome: 'Conta Operacional Telheiras' },
   { id: 'u-padel', nome: 'Blive Padel', conta_bancaria_nome: 'Conta Operacional Padel' },
